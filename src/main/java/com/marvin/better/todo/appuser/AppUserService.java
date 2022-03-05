@@ -1,10 +1,15 @@
 package com.marvin.better.todo.appuser;
 
+import com.marvin.better.todo.registration.token.ConfirmationToken;
+import com.marvin.better.todo.registration.token.ConfirmationTokenService;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Service
 public class AppUserService implements UserDetailsService {
@@ -13,10 +18,12 @@ public class AppUserService implements UserDetailsService {
             "user with email %s not found";
     private final AppUserRepository appUserRepository;
     private final BCryptPasswordEncoder bCryptPasswordEncoder;
+    private final ConfirmationTokenService confirmationTokenService;
 
-    public AppUserService(AppUserRepository appUserRepository, BCryptPasswordEncoder bCryptPasswordEncoder) {
+    public AppUserService(AppUserRepository appUserRepository, BCryptPasswordEncoder bCryptPasswordEncoder, ConfirmationTokenService confirmationTokenService) {
         this.appUserRepository = appUserRepository;
         this.bCryptPasswordEncoder = bCryptPasswordEncoder;
+        this.confirmationTokenService = confirmationTokenService;
     }
 
     @Override
@@ -35,8 +42,21 @@ public class AppUserService implements UserDetailsService {
         appUser.setPassword(encodedPassword);
         appUserRepository.save(appUser);
 
-        // TODO: Send confirmation token
+        String token = UUID.randomUUID().toString();
+        ConfirmationToken confirmationToken = new ConfirmationToken(
+                token,
+                LocalDateTime.now(),
+                LocalDateTime.now().plusMinutes(15),
+                appUser
+        );
 
-        return "it works";
+        confirmationTokenService.saveConfirmationToken(confirmationToken);
+
+        //TODO: SEND EMAIL
+        return token;
+    }
+
+    public int enableAppUser(String email) {
+        return appUserRepository.enableAppUser(email);
     }
 }
